@@ -131,3 +131,133 @@ INSERT INTO Lectures([Date],SubjectId,TeacherId) VALUES
 INSERT INTO GroupsLectures(GroupId,LectureId)
 SELECT 2, Id FROM Lectures;
 GO
+
+-- 1
+SELECT Building
+FROM Departments
+GROUP BY Building
+HAVING SUM(Financing) > 100000;
+
+-- 2
+SELECT g.Name
+FROM Groups g
+JOIN Departments d ON g.DepartmentId = d.Id
+JOIN GroupsLectures gl ON g.Id = gl.GroupId
+JOIN Lectures l ON gl.LectureId = l.Id
+WHERE g.Year = 5
+  AND d.Name = 'Software Development'
+  AND DATEPART(WEEK, l.Date) = 1
+GROUP BY g.Name
+HAVING COUNT(*) > 10;
+
+-- 3
+SELECT g.Name
+FROM Groups g
+JOIN GroupsStudents gs ON g.Id = gs.GroupId
+JOIN Students s ON gs.StudentId = s.Id
+GROUP BY g.Id, g.Name
+HAVING AVG(s.Rating) >
+(
+    SELECT AVG(s2.Rating)
+    FROM Groups g2
+    JOIN GroupsStudents gs2 ON g2.Id = gs2.GroupId
+    JOIN Students s2 ON gs2.StudentId = s2.Id
+    WHERE g2.Name = 'D221'
+);
+
+-- 4
+SELECT Surname, Name
+FROM Teachers
+WHERE Salary >
+(
+    SELECT AVG(Salary)
+    FROM Teachers
+    WHERE IsProfessor = 1
+);
+
+-- 5
+SELECT g.Name
+FROM Groups g
+JOIN GroupsCurators gc ON g.Id = gc.GroupId
+GROUP BY g.Id, g.Name
+HAVING COUNT(gc.CuratorId) > 1;
+
+-- 6
+SELECT g.Name
+FROM Groups g
+JOIN GroupsStudents gs ON g.Id = gs.GroupId
+JOIN Students s ON gs.StudentId = s.Id
+GROUP BY g.Id, g.Name
+HAVING AVG(s.Rating) <
+(
+    SELECT MIN(RatingAvg)
+    FROM
+    (
+        SELECT AVG(s2.Rating) AS RatingAvg
+        FROM Groups g2
+        JOIN GroupsStudents gs2 ON g2.Id = gs2.GroupId
+        JOIN Students s2 ON gs2.StudentId = s2.Id
+        WHERE g2.Year = 5
+        GROUP BY g2.Id
+    ) t
+);
+
+-- 7
+SELECT f.Name
+FROM Faculties f
+JOIN Departments d ON f.Id = d.FacultyId
+GROUP BY f.Id, f.Name
+HAVING SUM(d.Financing) >
+(
+    SELECT SUM(d2.Financing)
+    FROM Faculties f2
+    JOIN Departments d2 ON f2.Id = d2.FacultyId
+    WHERE f2.Name = 'Computer Science'
+);
+
+-- 8
+SELECT s.Name AS Subject,
+       t.Surname + ' ' + t.Name AS Teacher
+FROM Subjects s
+JOIN Lectures l ON s.Id = l.SubjectId
+JOIN Teachers t ON l.TeacherId = t.Id
+GROUP BY s.Id, s.Name, t.Id, t.Name, t.Surname
+HAVING COUNT(*) =
+(
+    SELECT MAX(LecCount)
+    FROM
+    (
+        SELECT COUNT(*) AS LecCount
+        FROM Lectures
+        GROUP BY SubjectId, TeacherId
+    ) x
+);
+
+-- 9
+SELECT Name
+FROM Subjects
+WHERE Id =
+(
+    SELECT TOP 1 SubjectId
+    FROM Lectures
+    GROUP BY SubjectId
+    ORDER BY COUNT(*)
+);
+
+-- 10
+SELECT
+(
+    SELECT COUNT(*)
+    FROM GroupsStudents gs
+    JOIN Groups g ON gs.GroupId = g.Id
+    JOIN Departments d ON g.DepartmentId = d.Id
+    WHERE d.Name = 'Software Development'
+) AS StudentsCount,
+(
+    SELECT COUNT(DISTINCT l.SubjectId)
+    FROM Lectures l
+    JOIN GroupsLectures gl ON l.Id = gl.LectureId
+    JOIN Groups g ON gl.GroupId = g.Id
+    JOIN Departments d ON g.DepartmentId = d.Id
+    WHERE d.Name = 'Software Development'
+) AS SubjectsCount;
